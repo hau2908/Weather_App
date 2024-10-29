@@ -13,6 +13,19 @@ enum WeatherState {
   }
 }
 
+extension WeatherStateaExt on WeatherState {
+  String get image {
+    switch (this) {
+      case WeatherState.rain:
+        return 'heavyrain';
+      case WeatherState.partiallyCloudy:
+        return 'heavyrain';
+      case WeatherState.overcast:
+        return 'heavyrain';
+    }
+  }
+}
+
 
 // imageUrl = weatherStateName.toLowerCase();
       // switch (imageUrl) {

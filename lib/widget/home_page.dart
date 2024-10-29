@@ -1,123 +1,39 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'dart:convert';
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import 'package:weather_app/Models/constants.dart';
-import 'package:weather_app/Models/district.dart';
-import 'package:weather_app/widget/weather_enum.dart';
+
+import 'package:weather_app/Provider/connect_api.dart';
 
 import 'weather_item.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  HomePage({Key? key}) : super(key: key);
 
-  @override
   State<HomePage> createState() => _HomePage();
 }
 
 class _HomePage extends State<HomePage> {
-  Constants myConstants = Constants();
-
-  int temperature = 0;
-  int maxTemp = 0;
-  String weatherStateName = 'Loading..';
-  int humidity = 0;
-  int windSpeed = 0;
-  var currentDate = 'Loading..';
-  String imageUrl = '';
-  String location = 'Đà nẵng';
-
-  List<dynamic> forecastDays = [];
-  List<dynamic> consolidatedWeatherList = [];
-
-  var selectedCities = District.getSelectedCities();
-  List<String> cities = ['Đà nẵng'];
-  String? errorMessage;
-
-  final String baseUrl =
-      'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/';
-  final String apiKey = 'YCVZZSMMKNN59RN74H9VEQDH4';
-
-  // Hàm tìm kiếm và lấy thông tin vị trí
-  Future<void> fetchLocation(String location) async {
-    setState(() {
-      errorMessage = null;
-    });
-    await fetchWeatherData(location);
-  }
-
-  // Hàm lấy dữ liệu thời tiết từ API cho vị trí đã chọn
-  Future<void> fetchWeatherData(String location) async {
-    var response = await http.get(Uri.parse(
-        '$baseUrl$location?unitGroup=metric&key=$apiKey&contentType=json'));
-    var result = json.decode(response.body);
-    var consolidateWeather = result['days'];
-
-    setState(() {
-      for (int i = 0; i < 7; i++) {
-        consolidateWeather.add(consolidateWeather[i]);
-      }
-      temperature = consolidateWeather[0]['temp'].round();
-      print(temperature);
-      weatherStateName = consolidateWeather[0]['conditions'];
-      print(weatherStateName);
-      maxTemp = consolidateWeather[0]['tempmax'].round();
-      print(maxTemp);
-      humidity = consolidateWeather[0]['humidity'].round();
-      print(humidity);
-      windSpeed = consolidateWeather[0]['windspeed'].round();
-      print(windSpeed);
-
-      var myDate = DateTime.parse(consolidateWeather[0]['datetime']);
-      currentDate = DateFormat('EEEE, d MMMM').format(myDate);
-
-      consolidatedWeatherList = consolidateWeather.toSet().toList();
-
-      //Duyệt tùng phần tử.
-      final listWeatherState = weatherStateName.split(',');
-      log(listWeatherState.toString());
-
-      final listEnumState = listWeatherState
-          .map((element) => WeatherState.getEnumFromCode(element.trim()))
-          .toList();
-      log(listEnumState.toString());
-
-      String weatherImg(List<WeatherState> states) {
-        if (listEnumState.contains(WeatherState.rain) &&
-            listEnumState.contains(WeatherState.partiallyCloudy)) {
-          return 'heavyrain';
-        }
-
-        if (listEnumState.contains(WeatherState.rain) &&
-            listEnumState.contains(WeatherState.overcast)) {
-          return 'lightrain';
-        }
-
-        if (listEnumState.contains(WeatherState.rain)) {
-          return 'heavyrain';
-        }
-        return '';
-      }
-
-      imageUrl = weatherImg(listEnumState);
-
-      consolidatedWeatherList = consolidateWeather.toSet().toList();
-    });
-  }
-
   @override
   void initState() {
-    fetchLocation(cities[0]);
-    fetchWeatherData(cities[0]);
-
-    for (int i = 0; i < selectedCities.length; i++) {
-      cities.add(selectedCities[i].city);
-    }
     super.initState();
+
+    // Gọi hàm để lấy dữ liệu vị trí và thời tiết
+    final weatherProvider =
+        Provider.of<WeatherProvider>(context, listen: false);
+    if (weatherProvider.cities.isNotEmpty) {
+      weatherProvider.fetchLocation(weatherProvider.cities[0]);
+      weatherProvider.fetchWeatherData(weatherProvider.cities[0]);
+    }
+
+    // Thêm các thành phố đã chọn vào danh sách cities
+    for (int i = 0; i < weatherProvider.selectedCities.length; i++) {
+      weatherProvider.cities.add(weatherProvider.selectedCities[i].city);
+    }
   }
 
   final Shader linearGradient = const LinearGradient(
@@ -126,6 +42,8 @@ class _HomePage extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    Constants myConstants = Constants();
+    final weatherProvider = Provider.of<WeatherProvider>(context);
     Size size = MediaQuery.of(context).size;
 
     return Scaffold(
@@ -161,22 +79,25 @@ class _HomePage extends State<HomePage> {
                     width: 4,
                   ),
                   DropdownButtonHideUnderline(
-                    ///**
-                    child: DropdownButton(
-                        value: location,
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        items: cities.map((String location) {
-                          return DropdownMenuItem(
-                              value: location, child: Text(location));
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            location = newValue!;
-                            fetchLocation(location);
-                            fetchWeatherData(location);
-                          });
-                        }),
-                  )
+                    child: DropdownButton<String>(
+                      value: weatherProvider.cities
+                              .contains(weatherProvider.location)
+                          ? weatherProvider.location
+                          : weatherProvider.cities[
+                              0], // Đảm bảo value khớp với một giá trị hợp lệ
+                      icon: const Icon(Icons.keyboard_arrow_down),
+                      items: weatherProvider.cities.map((String location) {
+                        return DropdownMenuItem(
+                          value: location,
+                          child: Text(location),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        weatherProvider.location = newValue!;
+                        weatherProvider.fetchLocation(newValue);
+                      },
+                    ),
+                  ),
                 ],
               )
             ],
@@ -189,14 +110,14 @@ class _HomePage extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              location,
+              weatherProvider.location,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 30.0,
               ),
             ),
             Text(
-              currentDate,
+              weatherProvider.currentDate,
               style: const TextStyle(
                 color: Colors.grey,
                 fontSize: 16.0,
@@ -226,10 +147,10 @@ class _HomePage extends State<HomePage> {
                   Positioned(
                     top: -40,
                     left: 20,
-                    child: imageUrl == ''
+                    child: weatherProvider.imageUrl == ''
                         ? const Text('')
                         : Image.asset(
-                            'assets/$imageUrl.png',
+                            'assets/${weatherProvider.imageUrl}.png',
                             width: 150,
                           ),
                   ),
@@ -237,7 +158,7 @@ class _HomePage extends State<HomePage> {
                     bottom: 20,
                     left: 20,
                     child: Text(
-                      weatherStateName,
+                      weatherProvider.weatherStateName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -253,7 +174,7 @@ class _HomePage extends State<HomePage> {
                           Padding(
                             padding: EdgeInsets.only(top: 4.8),
                             child: Text(
-                              temperature.toString(),
+                              weatherProvider.temperature.toString(),
                               style: TextStyle(
                                 fontSize: 80,
                                 fontWeight: FontWeight.bold,
@@ -291,19 +212,19 @@ class _HomePage extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   weather_items(
-                    value: windSpeed,
+                    value: weatherProvider.winSpeed,
                     text: 'Win Speed',
                     unit: 'km/h',
                     imageUrl: 'assets/windspeed.png',
                   ),
                   weather_items(
-                    value: windSpeed,
+                    value: weatherProvider.humidity,
                     text: 'Humidity',
                     unit: 'C°',
                     imageUrl: 'assets/humidity.png',
                   ),
                   weather_items(
-                    value: windSpeed,
+                    value: weatherProvider.maxTemp,
                     text: 'Max Temp',
                     unit: 'C°',
                     imageUrl: 'assets/max-temp.png',
@@ -337,18 +258,14 @@ class _HomePage extends State<HomePage> {
             Expanded(
                 child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: consolidatedWeatherList.length,
+                    itemCount: weatherProvider.consolidateWeatherList.length,
                     itemBuilder: (BuildContext context, int index) {
                       String today = DateTime.now().toString().substring(0, 10);
-                      var selectedDay =
-                          consolidatedWeatherList[index]['datetime'];
-                      // var futureWeatherName =
-                      //     consolidatedWeatherList[index]['conditions'];
-                      // var weatherUrl =
-                      //     futureWeatherName.replaceAll(' ', '').toLowerCase();
+                      final selectedDay = weatherProvider
+                          .consolidateWeatherList[index]['datetime'];
 
-                      var parseDate = DateTime.parse(
-                          consolidatedWeatherList[index]['datetime']);
+                      var parseDate = DateTime.parse(weatherProvider
+                          .consolidateWeatherList[index]['datetime']);
                       var newDate =
                           DateFormat('EEE').format(parseDate).substring(0, 3);
 
@@ -375,7 +292,8 @@ class _HomePage extends State<HomePage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              consolidatedWeatherList[index]['temp']
+                              weatherProvider.consolidateWeatherList[index]
+                                          ['temp']
                                       .round()
                                       .toString() +
                                   "C",
@@ -388,7 +306,7 @@ class _HomePage extends State<HomePage> {
                               ),
                             ),
                             Image.asset(
-                              'assets/' + imageUrl + '.png',
+                              'assets/${weatherProvider.imageUrl}.png',
                               width: 30,
                             ),
                             Text(

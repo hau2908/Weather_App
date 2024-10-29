@@ -90,8 +90,8 @@ class _welcomState extends State<Welcom> {
           backgroundColor: myConstants.primaryColor,
           child: Icon(Icons.pin_drop),
           onPressed: () {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (context) => const HomePage()));
+            Navigator.pushReplacement(
+                context, MaterialPageRoute(builder: (context) => HomePage()));
           }),
     );
   }
