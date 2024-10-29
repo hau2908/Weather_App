@@ -38,31 +38,27 @@ class WeatherProvider extends ChangeNotifier {
 
   Future<void> fetchWeatherData(String location) async {
     try {
-      // Tạo URL API
       final Uri apiUrl = Uri.parse(
           '$baseUrl${Uri.encodeFull(location)}?unitGroup=metric&key=$apiKey&contentType=json');
 
       final response = await http.get(apiUrl);
 
-      // Kiểm tra mã trạng thái
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
         final consolidateWeather = result['days'];
 
         if (consolidateWeather != null && consolidateWeather.isNotEmpty) {
+          for (int i = 0; i < 7; i++) {
+            consolidateWeather.add(consolidateWeather[i]);
+          }
           temperature = consolidateWeather[0]['temp'].round();
-          print('Temperature: $temperature');
           weatherStateName = consolidateWeather[0]['conditions'];
-          print('Weather State: $weatherStateName');
           maxTemp = consolidateWeather[0]['tempmax'].round();
-          print('Max Temp: $maxTemp');
           humidity = consolidateWeather[0]['humidity'].round();
-          print('Humidity: $humidity');
           winSpeed = consolidateWeather[0]['windspeed'].round();
-          print('Wind Speed: $winSpeed');
 
           final myDate = DateTime.parse(consolidateWeather[0]['datetime']);
-          currentDate = DateFormat('yyyy-MM-dd').format(myDate);
+          currentDate = DateFormat('E MMM dd, yyyy').format(myDate);
 
           consolidateWeatherList = consolidateWeather.toSet().toList();
 

@@ -19,9 +19,9 @@ extension WeatherStateaExt on WeatherState {
       case WeatherState.rain:
         return 'heavyrain';
       case WeatherState.partiallyCloudy:
-        return 'heavyrain';
+        return 'lightcloud';
       case WeatherState.overcast:
-        return 'heavyrain';
+        return 'snow';
     }
   }
 }

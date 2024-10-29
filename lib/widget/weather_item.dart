@@ -28,7 +28,7 @@ class weather_items extends StatelessWidget {
           height: 8,
         ),
         Container(
-          padding: EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20.0),
           height: 60,
           width: 60,
           decoration: const BoxDecoration(
@@ -37,12 +37,12 @@ class weather_items extends StatelessWidget {
           ),
           child: Image.asset(imageUrl),
         ),
-        SizedBox(
+        const SizedBox(
           height: 8,
         ),
         Text(
           value.toString() + unit,
-          style: TextStyle(
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
         )
